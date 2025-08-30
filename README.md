@@ -30,4 +30,4 @@ An AI-powered web application that generates JEE-style mock tests from PDF study
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Paridhisharmagithub/test-generator-web-master.git
+git clone https://github.com/anwitac795/test-generator-web-master.git
