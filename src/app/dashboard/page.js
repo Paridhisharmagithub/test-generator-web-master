@@ -14,23 +14,13 @@ export default function Dashboard() {
   const [selectedTimeRange, setSelectedTimeRange] = useState("all");
   const router = useRouter();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
-      if (!currentUser) router.push('/login');
-    });
-    return () => unsubscribe();
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) fetchTestResults();
-  }, [fetchTestResults, authLoading, user]);
-
   const fetchTestResults = useCallback(async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/user-test-results/${user.uid}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await fetch(`${apiUrl}/api/user-test-results/${user.uid}`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${await user.getIdToken()}` },
       });
@@ -45,12 +35,28 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+      if (!currentUser) router.push('/login');
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchTestResults();
+    }
+  }, [fetchTestResults, authLoading, user]);
+
   const getFilteredResults = () => {
     if (selectedTimeRange === "all") return testResults;
     
     const now = new Date();
     const filterDate = new Date();
-    const days = { "7days": 7, "30days": 30, "90days": 90 }[selectedTimeRange];
+    const timeRangeMap = { "7days": 7, "30days": 30, "90days": 90 };
+    const days = timeRangeMap[selectedTimeRange];
     filterDate.setDate(now.getDate() - days);
     
     return testResults.filter(result => new Date(result.completedAt) >= filterDate);
@@ -72,18 +78,18 @@ export default function Dashboard() {
   const getChartData = () => {
     const filtered = getFilteredResults();
     
-    // Performance trend
     const performanceTrend = filtered.map((test, index) => ({
       name: `T${index + 1}`,
       score: parseFloat(test.results.percentage),
     }));
 
-    // Subject performance
     const subjectData = {};
     filtered.forEach(test => {
       if (test.results.subjectWiseResults) {
         Object.entries(test.results.subjectWiseResults).forEach(([subject, data]) => {
-          if (!subjectData[subject]) subjectData[subject] = { total: 0, correct: 0 };
+          if (!subjectData[subject]) {
+            subjectData[subject] = { total: 0, correct: 0 };
+          }
           subjectData[subject].total += data.total;
           subjectData[subject].correct += data.correct;
         });
@@ -91,11 +97,10 @@ export default function Dashboard() {
     });
 
     const subjectPerformance = Object.entries(subjectData).map(([subject, data]) => ({
-      subject: subject.slice(0, 4), // Shortened for chart
+      subject: subject.slice(0, 4),
       score: ((data.correct / data.total) * 100).toFixed(1),
     }));
 
-    // Score distribution
     const scoreRanges = { "90-100": 0, "80-89": 0, "70-79": 0, "60-69": 0, "<60": 0 };
     filtered.forEach(test => {
       const score = parseFloat(test.results.percentage);
@@ -107,7 +112,9 @@ export default function Dashboard() {
     });
 
     const scoreDistribution = Object.entries(scoreRanges).map(([range, count]) => ({
-      range, count, percentage: ((count / filtered.length) * 100).toFixed(0)
+      range, 
+      count, 
+      percentage: ((count / filtered.length) * 100).toFixed(0)
     }));
 
     return { performanceTrend, subjectPerformance, scoreDistribution };
@@ -151,13 +158,12 @@ export default function Dashboard() {
 
   const stats = getStats();
   const chartData = getChartData();
-  const COLORS = ['#FA812F', '#000000', '#666666', '#999999', '#cccccc'];
+  const chartColors = ['#FA812F', '#000000', '#666666', '#999999', '#cccccc'];
 
   return (
     <div>
       <Navbar />
       <div className="min-h-screen bg-white">
-        {/* Header */}
         <div className="border-b border-gray-100 bg-white sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-6 py-6">
             <div className="flex items-center justify-between">
@@ -180,7 +186,6 @@ export default function Dashboard() {
         </div>
 
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Stats Cards */}
           {stats && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <div className="bg-white border border-gray-100 rounded-xl p-6">
@@ -202,9 +207,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Performance Trend */}
             <div className="bg-white border border-gray-100 rounded-xl p-6">
               <h3 className="text-lg font-semibold text-black mb-6">Performance Trend</h3>
               <ResponsiveContainer width="100%" height={280}>
@@ -231,7 +234,6 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
 
-            {/* Subject Performance */}
             <div className="bg-white border border-gray-100 rounded-xl p-6">
               <h3 className="text-lg font-semibold text-black mb-6">Subject Performance</h3>
               <ResponsiveContainer width="100%" height={280}>
@@ -253,7 +255,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Score Distribution */}
           <div className="bg-white border border-gray-100 rounded-xl p-6 mb-8">
             <h3 className="text-lg font-semibold text-black mb-6">Score Distribution</h3>
             <div className="flex justify-center">
@@ -268,7 +269,7 @@ export default function Dashboard() {
                     label={({ range, percentage }) => `${range}%: ${percentage}%`}
                   >
                     {chartData.scoreDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -284,7 +285,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Recent Tests */}
           <div className="bg-white border border-gray-100 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-black mb-6">Recent Tests</h3>
             <div className="space-y-3">
@@ -306,7 +306,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Action Button */}
           <div className="text-center mt-8">
             <button
               onClick={() => router.push('/mockTests')}
