@@ -2,18 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader, Trash2, Play, Calendar, User as UserIcon } from 'lucide-react';
+import Navbar from '../components/navbar';
 
-// Mock Navbar component since it's not available
-const Navbar = () => (
-  <nav className="bg-white shadow-sm border-b border-gray-200">
-    <div className="container mx-auto px-4 py-3">
-      <div className="flex items-center justify-between">
-        <div className="text-xl font-bold text-[#FA812F]">JEE Ace</div>
-        <div className="text-sm text-gray-600">Question Solver</div>
-      </div>
-    </div>
-  </nav>
-);
 
 export default function QuestionSolver() {
   const [messages, setMessages] = useState([]);
