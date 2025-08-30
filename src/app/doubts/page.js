@@ -1,14 +1,27 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader, Trash2 } from 'lucide-react';
-import Navbar from '../components/navbar';
+import { Send, Bot, User, Loader, Trash2, Play, Calendar, User as UserIcon } from 'lucide-react';
+
+// Mock Navbar component since it's not available
+const Navbar = () => (
+  <nav className="bg-white shadow-sm border-b border-gray-200">
+    <div className="container mx-auto px-4 py-3">
+      <div className="flex items-center justify-between">
+        <div className="text-xl font-bold text-[#FA812F]">JEE Ace</div>
+        <div className="text-sm text-gray-600">Question Solver</div>
+      </div>
+    </div>
+  </nav>
+);
 
 export default function QuestionSolver() {
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState('');
   const [doubt, setDoubt] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -50,7 +63,7 @@ export default function QuestionSolver() {
     for (const url of apiUrls) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const response = await fetch(url, {
           method: 'POST',
@@ -83,6 +96,7 @@ export default function QuestionSolver() {
             id: Date.now() + 1,
             type: 'bot',
             solution: data.solution,
+            videos: data.videos || [],
             timestamp: new Date().toLocaleTimeString()
           };
           setMessages(prev => [...prev, botMessage]);
@@ -105,7 +119,7 @@ export default function QuestionSolver() {
     const errorMessage = {
       id: Date.now() + 1,
       type: 'error',
-      message: `Connection failed. Please ensure Flask server is running on port 5000. Last error: ${lastError.message}`,
+      message: `Connection failed. Please ensure Flask server is running on port 3002. Last error: ${lastError.message}`,
       timestamp: new Date().toLocaleTimeString()
     };
     setMessages(prev => [...prev, errorMessage]);
@@ -114,6 +128,8 @@ export default function QuestionSolver() {
 
   const clearChat = () => {
     setMessages([]);
+    setSelectedVideo(null);
+    setShowVideoPlayer(false);
   };
 
   const formatMarkdown = (text) => {
@@ -127,20 +143,34 @@ export default function QuestionSolver() {
       .replace(/\n/g, '<br/>');
   };
 
+  const handleVideoClick = (video) => {
+    setSelectedVideo(video);
+    setShowVideoPlayer(true);
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FEF3E2] to-white">
       <Navbar/>
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold text-[#FA812F] mb-4">
             JEE Ace <span className="text-[#F3C623]">Question Solver</span>
           </h1>
           <p className="text-lg text-[#FA812F]/80 max-w-2xl mx-auto">
-            Get comprehensive solutions with formulas and concepts explained in detail
+            Get comprehensive solutions with formulas, concepts, and relevant video tutorials
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-6 sticky top-8">
               <div className="flex items-center justify-between mb-6">
@@ -207,102 +237,222 @@ export default function QuestionSolver() {
             </div>
           </div>
 
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-lg h-[600px] flex flex-col">
-              <div className="bg-gradient-to-r from-[#FA812F] to-[#FFB22C] text-white p-4 rounded-t-2xl">
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                  <Bot size={24} />
-                  Solution Chat
-                </h3>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                      <Bot size={48} className="mx-auto mb-4 text-[#FA812F]/30" />
-                      <p className="text-lg">Ask a question to get started!</p>
-                      <p className="text-sm mt-2">I'll provide detailed solutions with formulas and concepts</p>
+          <div className="lg:col-span-3">
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Chat Section */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-lg h-[600px] flex flex-col">
+                <div className="bg-gradient-to-r from-[#FA812F] to-[#FFB22C] text-white p-4 rounded-t-2xl">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Bot size={24} />
+                    Solution Chat
+                  </h3>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {messages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-gray-500">
+                      <div className="text-center">
+                        <Bot size={48} className="mx-auto mb-4 text-[#FA812F]/30" />
+                        <p className="text-lg">Ask a question to get started!</p>
+                        <p className="text-sm mt-2">I'll provide detailed solutions with formulas, concepts, and video tutorials</p>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      {message.type !== 'user' && (
-                        <div className="flex-shrink-0">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            message.type === 'error' ? 'bg-red-500' : 'bg-[#FA812F]'
-                          }`}>
-                            <Bot size={16} className="text-white" />
+                  ) : (
+                    messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        {message.type !== 'user' && (
+                          <div className="flex-shrink-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              message.type === 'error' ? 'bg-red-500' : 'bg-[#FA812F]'
+                            }`}>
+                              <Bot size={16} className="text-white" />
+                            </div>
                           </div>
+                        )}
+                        
+                        <div className={`max-w-[80%] ${message.type === 'user' ? 'order-2' : ''}`}>
+                          {message.type === 'user' ? (
+                            <div className="bg-[#FA812F] text-white p-4 rounded-2xl rounded-tr-sm">
+                              <div className="mb-2">
+                                <div className="font-semibold text-sm opacity-90">Question:</div>
+                                <div className="mt-1">{message.question}</div>
+                              </div>
+                              <div>
+                                <div className="font-semibold text-sm opacity-90">Doubt:</div>
+                                <div className="mt-1">{message.doubt}</div>
+                              </div>
+                              <div className="text-xs opacity-70 mt-2">{message.timestamp}</div>
+                            </div>
+                          ) : message.type === 'error' ? (
+                            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl rounded-tl-sm">
+                              <div className="font-semibold mb-1">Error:</div>
+                              <div>{message.message}</div>
+                              <div className="text-xs opacity-70 mt-2">{message.timestamp}</div>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-50 border border-gray-200 p-4 rounded-2xl rounded-tl-sm">
+                              <div 
+                                className="prose prose-sm max-w-none text-gray-800"
+                                dangerouslySetInnerHTML={{
+                                  __html: `<p class="mb-3 text-gray-800 leading-relaxed">${formatMarkdown(message.solution)}</p>`
+                                }}
+                              />
+                              <div className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-200">
+                                {message.timestamp}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      
-                      <div className={`max-w-[80%] ${message.type === 'user' ? 'order-2' : ''}`}>
-                        {message.type === 'user' ? (
-                          <div className="bg-[#FA812F] text-white p-4 rounded-2xl rounded-tr-sm">
-                            <div className="mb-2">
-                              <div className="font-semibold text-sm opacity-90">Question:</div>
-                              <div className="mt-1">{message.question}</div>
-                            </div>
-                            <div>
-                              <div className="font-semibold text-sm opacity-90">Doubt:</div>
-                              <div className="mt-1">{message.doubt}</div>
-                            </div>
-                            <div className="text-xs opacity-70 mt-2">{message.timestamp}</div>
-                          </div>
-                        ) : message.type === 'error' ? (
-                          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl rounded-tl-sm">
-                            <div className="font-semibold mb-1">Error:</div>
-                            <div>{message.message}</div>
-                            <div className="text-xs opacity-70 mt-2">{message.timestamp}</div>
-                          </div>
-                        ) : (
-                          <div className="bg-gray-50 border border-gray-200 p-4 rounded-2xl rounded-tl-sm">
-                            <div 
-                              className="prose prose-sm max-w-none text-gray-800"
-                              dangerouslySetInnerHTML={{
-                                __html: `<p class="mb-3 text-gray-800 leading-relaxed">${formatMarkdown(message.solution)}</p>`
-                              }}
-                            />
-                            <div className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-200">
-                              {message.timestamp}
+                        
+                        {message.type === 'user' && (
+                          <div className="flex-shrink-0 order-1">
+                            <div className="w-8 h-8 bg-[#F3C623] rounded-full flex items-center justify-center">
+                              <User size={16} className="text-white" />
                             </div>
                           </div>
                         )}
                       </div>
-                      
-                      {message.type === 'user' && (
-                        <div className="flex-shrink-0 order-1">
-                          <div className="w-8 h-8 bg-[#F3C623] rounded-full flex items-center justify-center">
-                            <User size={16} className="text-white" />
+                    ))
+                  )}
+                  
+                  {loading && (
+                    <div className="flex gap-3 justify-start">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-[#FA812F] rounded-full flex items-center justify-center">
+                          <Bot size={16} className="text-white" />
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 border border-gray-200 p-4 rounded-2xl rounded-tl-sm">
+                        <div className="flex items-center gap-2 text-[#FA812F]">
+                          <Loader className="animate-spin" size={16} />
+                          Analyzing your question and finding relevant videos...
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
+
+              {/* Video Section */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-lg h-[600px] flex flex-col">
+                <div className="bg-gradient-to-r from-[#F3C623] to-[#FFB22C] text-white p-4 rounded-t-2xl">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Play size={24} />
+                    Related Videos
+                  </h3>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4">
+                  {showVideoPlayer && selectedVideo ? (
+                    <div className="space-y-4">
+                      <div className="aspect-video w-full">
+                        <iframe
+                          src={`https://www.youtube.com/embed/${selectedVideo.id}?autoplay=1`}
+                          title={selectedVideo.title}
+                          className="w-full h-full rounded-xl border"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-xl">
+                        <h4 className="font-bold text-[#FA812F] mb-2">{selectedVideo.title}</h4>
+                        <p className="text-sm text-gray-600 mb-2">{selectedVideo.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <UserIcon size={12} />
+                            {selectedVideo.channel}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar size={12} />
+                            {formatDate(selectedVideo.publishedAt)}
                           </div>
                         </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowVideoPlayer(false);
+                          setSelectedVideo(null);
+                        }}
+                        className="w-full py-2 px-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
+                      >
+                        Back to Video List
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {messages.length === 0 ? (
+                        <div className="flex items-center justify-center h-full text-gray-500">
+                          <div className="text-center">
+                            <Play size={48} className="mx-auto mb-4 text-[#F3C623]/30" />
+                            <p className="text-lg">Relevant videos will appear here</p>
+                            <p className="text-sm mt-2">Ask a question to see tutorial videos</p>
+                          </div>
+                        </div>
+                      ) : (
+                        (() => {
+                          const latestBotMessage = messages.filter(m => m.type === 'bot').pop();
+                          const videos = latestBotMessage?.videos || [];
+                          
+                          if (videos.length === 0) {
+                            return (
+                              <div className="flex items-center justify-center h-full text-gray-500">
+                                <div className="text-center">
+                                  <Play size={48} className="mx-auto mb-4 text-[#F3C623]/30" />
+                                  <p className="text-lg">No videos found</p>
+                                  <p className="text-sm mt-2">Try asking a different question</p>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          return videos.map((video, index) => (
+                            <div
+                              key={video.id}
+                              className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors cursor-pointer border border-gray-200 hover:border-[#FA812F]"
+                              onClick={() => handleVideoClick(video)}
+                            >
+                              <div className="flex gap-3">
+                                <div className="relative flex-shrink-0">
+                                  <img
+                                    src={video.thumbnail}
+                                    alt={video.title}
+                                    className="w-24 h-18 object-cover rounded-lg"
+                                  />
+                                  <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                    <Play size={20} className="text-white" />
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-[#FA812F] text-sm mb-1 line-clamp-2 leading-tight">
+                                    {video.title}
+                                  </h4>
+                                  <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                                    {video.description}
+                                  </p>
+                                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                                    <div className="flex items-center gap-1">
+                                      <UserIcon size={10} />
+                                      <span className="truncate max-w-20">{video.channel}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <Calendar size={10} />
+                                      {formatDate(video.publishedAt)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ));
+                        })()
                       )}
                     </div>
-                  ))
-                )}
-                
-                {loading && (
-                  <div className="flex gap-3 justify-start">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-[#FA812F] rounded-full flex items-center justify-center">
-                        <Bot size={16} className="text-white" />
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 border border-gray-200 p-4 rounded-2xl rounded-tl-sm">
-                      <div className="flex items-center gap-2 text-[#FA812F]">
-                        <Loader className="animate-spin" size={16} />
-                        Analyzing your question and generating solution...
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} />
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -310,7 +460,7 @@ export default function QuestionSolver() {
 
         <div className="mt-8 bg-white rounded-2xl border border-gray-200 shadow-lg p-6">
           <h3 className="text-xl font-bold text-[#FA812F] mb-4">How it works</h3>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-4 gap-6">
             <div className="text-center">
               <div className="w-12 h-12 bg-[#FA812F] text-white rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold">
                 1
@@ -331,6 +481,13 @@ export default function QuestionSolver() {
               </div>
               <h4 className="font-semibold text-[#FA812F] mb-2">Get Solution</h4>
               <p className="text-sm text-gray-600">Receive detailed solution with formulas and concepts</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-[#FA812F]/80 text-white rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold">
+                4
+              </div>
+              <h4 className="font-semibold text-[#FA812F] mb-2">Watch Videos</h4>
+              <p className="text-sm text-gray-600">Watch relevant tutorial videos to clear your doubts</p>
             </div>
           </div>
         </div>

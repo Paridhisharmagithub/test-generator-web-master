@@ -43,7 +43,8 @@ const Navbar = () => {
             { href: '/dashboard', label: 'Dashboard' },
             { href: '/mockTests', label: 'Mock Tests' },
            
-            { href: '/quickNotes', label: 'Quick Notes' }
+            { href: '/quickNotes', label: 'Quick Notes' },
+            { href: '/doubts', label: 'Doubt Clearance' }
            
           ].map(({ href, label }) => (
             <Link
