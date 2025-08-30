@@ -23,8 +23,12 @@ import pandas as pd
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
+# ...existing code...
+from flask_cors import CORS
+
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"])
+# ...existing code...
 
 mongo_uri = os.getenv('MONGODB_URI')
 mongo_client = MongoClient(mongo_uri)

@@ -13,6 +13,21 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedTimeRange, setSelectedTimeRange] = useState("all");
   const router = useRouter();
+  const [selectedRange, setSelectedRange] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  const leaderboardData = [
+  { name: "Navin Sharma", score: 98, tests: 12 },
+  { name: "Aakash Singh", score: 95, tests: 10 },
+  { name: "Rahul Verma", score: 92, tests: 8 },
+  { name: "Sneha Gupta", score: 90, tests: 7 },
+  { name: "Amit Kumar", score: 88, tests: 6 },
+  { name: "Aman Shah", score: 76, tests: 7 },
+  { name: "You", score: 75, tests: 5 },
+  { name: "Shruti Dubey", score: 74, tests: 5 },
+  { name: "Aisha Garg", score: 72, tests: 5 },
+  { name: "Fatima Shah", score: 68, tests: 6 },
+];
 
   const fetchTestResults = useCallback(async () => {
     if (!user) return;
@@ -84,22 +99,23 @@ export default function Dashboard() {
     }));
 
     const subjectData = {};
-    filtered.forEach(test => {
-      if (test.results.subjectWiseResults) {
-        Object.entries(test.results.subjectWiseResults).forEach(([subject, data]) => {
-          if (!subjectData[subject]) {
-            subjectData[subject] = { total: 0, correct: 0 };
-          }
-          subjectData[subject].total += data.total;
-          subjectData[subject].correct += data.correct;
-        });
-      }
-    });
+      filtered.forEach(test => {
+        if (test.results?.subjectWiseResults) {
+          Object.entries(test.results.subjectWiseResults).forEach(([subject, data]) => {
+            if (!subjectData[subject]) {
+              subjectData[subject] = { total: 0, correct: 0 };
+            }
+            subjectData[subject].total += data.total || 0;
+            subjectData[subject].correct += data.correct || 0;
+          });
+        }
+      });
 
-    const subjectPerformance = Object.entries(subjectData).map(([subject, data]) => ({
-      subject: subject.slice(0, 4),
-      score: ((data.correct / data.total) * 100).toFixed(1),
-    }));
+      const subjectPerformance = Object.entries(subjectData).map(([subject, data]) => ({
+        subject: subject.slice(0, 4),
+        score: data.total > 0 ? parseFloat(((data.correct / data.total) * 100).toFixed(1)) : 0,
+      }));
+
 
     const scoreRanges = { "90-100": 0, "80-89": 0, "70-79": 0, "60-69": 0, "<60": 0 };
     filtered.forEach(test => {
@@ -111,15 +127,18 @@ export default function Dashboard() {
       else scoreRanges["<60"]++;
     });
 
-    const scoreDistribution = Object.entries(scoreRanges).map(([range, count]) => ({
-      range, 
-      count, 
+    const scoreDistribution = Object.entries(scoreRanges)
+    .map(([range, count]) => ({
+      range,
+      count,
       percentage: ((count / filtered.length) * 100).toFixed(0)
-    }));
+    }))
+    .filter(entry => entry.count > 0); // Only non-zero slices
 
     return { performanceTrend, subjectPerformance, scoreDistribution };
   };
 
+  
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -158,7 +177,8 @@ export default function Dashboard() {
 
   const stats = getStats();
   const chartData = getChartData();
-  const chartColors = ['#FA812F', '#000000', '#666666', '#999999', '#cccccc'];
+  const chartColors = ['#FA812F', '#4F8A8B', '#F3C623', '#A1C6EA', '#FFB22C'];
+  const subjectPerformance = chartData.subjectPerformance;
 
   return (
     <div>
@@ -234,23 +254,39 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-white border border-gray-100 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-black mb-6">Subject Performance</h3>
+            <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+          
+              <h3 className="text-lg font-semibold text-black mb-6"> Subject Performance</h3>
+
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={chartData.subjectPerformance}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="subject" stroke="#666" fontSize={12} />
-                  <YAxis stroke="#666" fontSize={12} domain={[0, 100]} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'white',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
-                  <Bar dataKey="score" fill="#FA812F" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                {Array.isArray(subjectPerformance) && subjectPerformance.length > 0 ? (
+                  <BarChart data={subjectPerformance}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="subject" stroke="#666" fontSize={12} />
+                    <YAxis stroke="#666" fontSize={12} domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
+                    <Tooltip
+                      formatter={(value) => [`${value}% correct answers`, "Performance"]}
+                      labelFormatter={(label) => `Subject: ${label}`}
+                      contentStyle={{
+                        backgroundColor: "white",
+                        border: "1px solid #e0e0e0",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                      }}
+                    />
+                    <Bar
+                      dataKey="score"
+                      fill="#FA812F"
+                      radius={[6, 6, 0, 0]}
+                      className="transition-all duration-300 hover:fill-orange-500"
+                    />
+                  </BarChart>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                    
+                    <p>No subject performance data available</p>
+                  </div>
+                )}
               </ResponsiveContainer>
             </div>
           </div>
@@ -266,14 +302,37 @@ export default function Dashboard() {
                     cy="50%"
                     outerRadius={100}
                     dataKey="count"
-                    label={({ range, percentage }) => `${range}%: ${percentage}%`}
+                    label={({ count }) =>
+                      count > 0 ? `${count} test(s)` : ""
+                    }
+                    onClick={(_, index) => setSelectedRange(chartData.scoreDistribution[index].range)}
                   >
                     {chartData.scoreDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
+
+                  // Below the chart, show details if a slice is selected:
+                  {selectedRange && (
+                    <div className="mt-4 text-center text-sm text-black">
+                      You have {chartData.scoreDistribution.find(r => r.range === selectedRange).count} test(s) in the "{selectedRange}" range.
+                      <button className="ml-2 text-[#FA812F]" onClick={() => setSelectedRange(null)}>Clear</button>
+                    </div>
+                  )}
+                  <Tooltip
+                    formatter={(value, name, props) => {
+                      if (selectedRange) {
+                        return [
+                          `${selectedRange}: ${chartData.scoreDistribution.find(r => r.range === selectedRange)?.percentage || 0}%`,
+                          'Score Range'
+                        ];
+                      }
+                      // Default tooltip if no slice is selected
+                      const range = props.payload?.range || name;
+                      const percentage = props.payload?.percentage || 0;
+                      return [`${range}: ${percentage}%`, 'Score Range'];
+                    }}
+                    contentStyle={{
                       backgroundColor: 'white',
                       border: '1px solid #e0e0e0',
                       borderRadius: '8px',
@@ -284,6 +343,58 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          <div className="bg-white border border-gray-100 rounded-xl p-6 mb-8 shadow-sm animate-fade-in">
+                <h3 className="text-xl font-bold text-black mb-6">Leaderboard</h3>
+                <table className="w-full text-left">
+                  <thead>
+                    <tr>
+                      <th className="py-2 px-4 text-gray-600 font-medium">Rank</th>
+                      <th className="py-2 px-4 text-gray-600 font-medium">Name</th>
+                      <th className="py-2 px-4 text-gray-600 font-medium">Avg Score</th>
+                      <th className="py-2 px-4 text-gray-600 font-medium">Tests</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboardData.map((user, idx) => (
+                      <tr
+                        key={user.name}
+                        className={`relative transition-all duration-300 cursor-pointer border-b-black
+                          ${idx === 0 ? "bg-[#FA812F]/20 font-bold border-l-4 border-[#FA812F] " : "border-b border-b-gray-200"} 
+                          hover:bg-[#FA812F]/10 hover:scale-[1.01] hover:shadow-md animate-slide-up`}
+                        onClick={() => setSelectedUser(user)}
+                      >
+                        <td className="py-3 px-4 flex items-center gap-2">
+                          {idx + 1}
+                          {idx === 0 && <span className="text-yellow-500">🏆</span>}
+                          {idx === 1 && <span className="text-gray-400">🥈</span>}
+                          {idx === 2 && <span className="text-amber-600">🥉</span>}
+                        </td>
+                        <td className="py-2 px-4">{user.name}</td>
+                        <td className="py-2 px-4">{user.score}%</td>
+                        <td className="py-2 px-4">{user.tests}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Popup Card */}
+                {selectedUser && (
+                  <div className="mt-6 p-6 border-2 border-[#FA812F] rounded-2xl bg-white shadow-xl text-black text-center animate-zoom-in">
+                    <div className="font-bold text-lg">{selectedUser.name}</div>
+                    <div className="text-gray-600 mt-1">Avg Score: {selectedUser.score}%</div>
+                    <div className="text-gray-600">Tests Taken: {selectedUser.tests}</div>
+                    <button
+                      className="mt-4 px-5 py-2 bg-[#FA812F] text-white rounded-xl hover:bg-[#e07025] transition"
+                      onClick={() => setSelectedUser(null)}
+                    >
+                      Close
+                    </button>
+                  </div>
+                )}
+              </div>
+
+
 
           <div className="bg-white border border-gray-100 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-black mb-6">Recent Tests</h3>

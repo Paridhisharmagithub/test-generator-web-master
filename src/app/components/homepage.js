@@ -10,7 +10,12 @@ export default function Homepage() {
 
   useEffect(() => {
     const loadVanta = () => {
-      if (typeof window.VANTA !== "undefined" && !window.vantaEffect) {
+      if (
+        typeof window.VANTA !== "undefined" &&
+        typeof window.THREE !== "undefined" &&
+        !window.vantaEffect &&
+        vantaRef.current
+      ) {
         window.vantaEffect = window.VANTA.GLOBE({
           el: vantaRef.current,
           mouseControls: true,
@@ -28,13 +33,28 @@ export default function Homepage() {
     };
 
     if (typeof window !== "undefined") {
-      if (window.VANTA) {
+      if (window.VANTA && window.THREE) {
         loadVanta();
       } else {
-        const script = document.createElement("script");
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.globe.min.js";
-        script.onload = loadVanta;
-        document.body.appendChild(script);
+        // Load three.js first if not present
+        if (!window.THREE) {
+          const threeScript = document.createElement("script");
+          threeScript.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js";
+          threeScript.onload = () => {
+            // Now load VANTA
+            const vantaScript = document.createElement("script");
+            vantaScript.src = "https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.globe.min.js";
+            vantaScript.onload = loadVanta;
+            document.body.appendChild(vantaScript);
+          };
+          document.body.appendChild(threeScript);
+        } else {
+          // Only load VANTA if three.js is already present
+          const vantaScript = document.createElement("script");
+          vantaScript.src = "https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.globe.min.js";
+          vantaScript.onload = loadVanta;
+          document.body.appendChild(vantaScript);
+        }
       }
     }
 
@@ -44,7 +64,7 @@ export default function Homepage() {
         window.vantaEffect = null;
       }
     };
-  }, [])
+  }, []);
 
   return (
     <>
