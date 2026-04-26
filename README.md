@@ -42,5 +42,5 @@ Upload your academic material, extract questions, attempt timed tests, and get *
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/anwitac795/test-generator-web-master.git
+git clone [https://github.com/anwitac795/test-generator-web-master.git](https://github.com/Paridhisharmagithub/test-generator-web-master.git)
 cd test-generator-web-master
